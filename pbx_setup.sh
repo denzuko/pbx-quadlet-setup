@@ -38,20 +38,20 @@ cleanup() {
 trap cleanup EXIT
 
 # ── Programmatic VIP Retrieval (Rule 15) ────────────────────────────────────
-# keepalived assigns the VIP as a secondary address on the VRRP interface.
-# grep -oP exits 1 on no match — use || true to prevent set -e from firing
-# before log() and die() are available to report the failure.
+# Read the VIP directly from the VRRP interface via ip(1).
+# On this host keepalived manages wlan0 as the sole address on that interface
+# (no node-primary + secondary split) — take the first global scope address.
+# grep -oP exits 1 on no match: || true prevents set -e from firing silently.
 PUBLIC_IP=""
 
-# Primary: secondary address on the VRRP interface
+# Primary: first global-scope address on the VRRP interface
 PUBLIC_IP=$(ip -4 addr show dev "$VRRP_IFACE" 2>/dev/null \
-    | grep -oP 'inet \K[\d.]+(?=.*secondary)' || true)
+    | grep -oP 'inet \K[\d.]+' | head -1 || true)
 
-# Fallback: any secondary address on any interface
+# Fallback: first global-scope address on any interface (excludes loopback)
 if [[ -z "$PUBLIC_IP" ]]; then
-    PUBLIC_IP=$(ip -4 addr show 2>/dev/null \
-        | grep -oP 'inet \K[\d.]+(?=.*secondary)' \
-        | head -1 || true)
+    PUBLIC_IP=$(ip -4 addr show scope global 2>/dev/null \
+        | grep -oP 'inet \K[\d.]+' | head -1 || true)
 fi
 
 log "VIP detection: ${PUBLIC_IP:-not found}"
