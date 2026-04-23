@@ -8,11 +8,10 @@ Production PBX infrastructure automation for Albany/Sovereign Tech stack.
 ## Install
 
 ```bash
-# Verify then install
-curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pubkey.asc | gpg --import
-curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh     -o pbx_setup.sh
-curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh.sig -o pbx_setup.sh.sig
-gpg --verify pbx_setup.sh.sig pbx_setup.sh && sudo bash pbx_setup.sh
+# Download, review, install
+curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh -o pbx_setup.sh
+less pbx_setup.sh   # review before running
+sudo bash pbx_setup.sh
 ```
 
 ## Development

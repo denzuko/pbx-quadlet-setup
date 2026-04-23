@@ -1,23 +1,23 @@
 # Code Signing
 
-Script is signed with GPG (detached armored signature).
+GPG signing is planned for a future release. v4.1 ships without detached signatures.
 
-## Sign a release
-```bash
-gpg --armor --detach-sign --output pbx_setup.sh.sig pbx_setup.sh
-gpg --export --armor YOUR_KEY_ID > signing/pubkey.asc
-```
+## Install
 
-## Verify before install
-```bash
-gpg --import signing/pubkey.asc
-gpg --verify pbx_setup.sh.sig pbx_setup.sh
-```
-
-## One-liner install with verification
 ```bash
 curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh -o pbx_setup.sh
-curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh.sig -o pbx_setup.sh.sig
-curl -fsSL https://denzuko.github.io/pbx-quadlet-setup/pubkey.asc | gpg --import
-gpg --verify pbx_setup.sh.sig pbx_setup.sh && sudo bash pbx_setup.sh
+less pbx_setup.sh
+sudo bash pbx_setup.sh
+```
+
+## Verify via ShellCheck (recommended)
+
+```bash
+shellcheck -S style pbx_setup.sh
+```
+
+## Run BATS tests
+
+```bash
+bats tests/pbx_setup.bats
 ```

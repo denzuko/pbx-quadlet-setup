@@ -61,7 +61,6 @@
     <div class="badges">
       <span class="badge green">27/27 tests passing</span>
       <span class="badge green">ShellCheck clean</span>
-      <span class="badge blue">GPG signed</span>
       <span class="badge amber">v4.1</span>
     </div>
   </header>
@@ -80,12 +79,11 @@
 
   <section>
     <h2>Verified install</h2>
-<pre><span class="comment"># Fetch, verify, install</span>
-<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pubkey.asc</span> | gpg --import
-<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh</span>     -o pbx_setup.sh
-<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh.sig</span> -o pbx_setup.sh.sig
-<span class="kw">gpg</span> --verify pbx_setup.sh.sig pbx_setup.sh <span class="comment">&amp;&amp; \</span>
-  sudo bash pbx_setup.sh</pre>
+<pre><span class="comment"># Download and install</span>
+<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh</span> -o pbx_setup.sh
+<span class="comment"># Review before running</span>
+<span class="cmd">less</span> pbx_setup.sh
+sudo bash pbx_setup.sh</pre>
   </section>
 
   <section>
@@ -113,9 +111,8 @@
 
   <footer>
     <a href="pbx_setup.sh">pbx_setup.sh</a> ·
-    <a href="pbx_setup.sh.sig">pbx_setup.sh.sig</a> ·
-    <a href="pubkey.asc">pubkey.asc</a> ·
-    <a href="https://github.com/denzuko/pbx-quadlet-setup">GitHub</a>
+    <a href="https://github.com/denzuko/pbx-quadlet-setup">GitHub</a> ·
+    <a href="https://github.com/denzuko/pbx-quadlet-setup/releases/tag/v4.1">Release v4.1</a>
   </footer>
 </div>
 </body>
