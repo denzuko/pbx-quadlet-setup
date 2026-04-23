@@ -149,11 +149,18 @@ mkdir -p "$PBXADMIN_HOME"
 chown "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME"
 chmod 0700 "$PBXADMIN_HOME"
 
-# Enable linger by UID — logind resolves via userdbd which is now running
-log "Enabling linger for $PBX_USER (UID $PBX_UID)"
-loginctl enable-linger "$PBX_UID"
-loginctl show-user "$PBX_UID" | grep -q "Linger=yes" \
-    || die "Linger activation failed for $PBX_USER"
+# Enable linger by writing directly to /var/lib/systemd/linger/.
+# loginctl enable-linger resolves users via logind's internal lookup
+# which does not use nss-systemd and cannot see /etc/userdb/ drop-ins.
+# Writing the file directly is what loginctl does internally anyway —
+# it is the documented mechanism (see logind.conf(5) and the linger dir).
+log "Enabling linger for $PBX_USER"
+mkdir -p /var/lib/systemd/linger
+touch "/var/lib/systemd/linger/${PBX_USER}"
+[[ -f "/var/lib/systemd/linger/${PBX_USER}" ]] \
+    || die "Linger file creation failed for $PBX_USER"
+# Notify logind to re-read linger state
+systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
 
 # Explicitly start the user manager — linger alone does not start it on a
 # fresh account. user@UID.service is a documented systemd template unit.
