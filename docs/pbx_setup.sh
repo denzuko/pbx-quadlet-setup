@@ -96,18 +96,24 @@ mkdir -p "$PBX_MOUNT"/{etc/asterisk,var/lib/asterisk/moh,build}
 chown -R "$PBX_UID:$PBX_UID" "$PBX_MOUNT"
 
 ## SECTION 4: IDENTITY MANAGEMENT
+# homectl --storage=directory:
+#   - create with --enforce-password-policy=no so activation is non-interactive
+#   - activate performs a bind mount of the home dir; required before
+#     user@UID.service can access the home to start the user manager
+#   - linger + explicit systemctl start user@UID.service brings up the
+#     user manager without requiring an interactive login session
 if ! getent passwd "$PBX_USER" >/dev/null; then
     log "Creating service account $PBX_USER (directory storage)"
     homectl create "$PBX_USER" \
         --storage=directory \
         --uid="$PBX_UID" \
-        --shell=/bin/bash
+        --shell=/bin/bash \
+        --enforce-password-policy=no
 fi
 
-# homectl --storage=directory accounts must be activated before the user
-# manager (user@UID.service) can start. activate mounts the home directory
-# and makes it accessible to systemd-logind.
-log "Activating home for $PBX_USER..."
+# Activate the home directory (bind mount) — required for user@UID.service
+# --storage=directory activation is non-interactive and needs no password
+log "Activating home directory for $PBX_USER..."
 homectl activate "$PBX_USER" \
     || die "homectl activate failed for $PBX_USER"
 
@@ -116,13 +122,14 @@ loginctl enable-linger "$PBX_USER"
 loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
     || die "Linger activation failed for $PBX_USER"
 
-# Explicitly start user manager — linger alone does not start it on a
-# fresh account. Home must be activated first or user@UID.service fails.
+# user@UID.service is a real systemd template unit (see user@.service(5)).
+# linger alone does not start it on a fresh account with no prior session.
 log "Starting user@${PBX_UID}.service..."
 systemctl start "user@${PBX_UID}.service" \
     || die "Failed to start user@${PBX_UID}.service"
 
-# Poll for D-Bus session socket — created asynchronously by systemd-logind
+# user-runtime-dir@UID.service creates /run/user/UID and the D-Bus socket
+# asynchronously — poll until the socket is ready before machinectl calls
 log "Waiting for session bus at /run/user/${PBX_UID}/bus..."
 _bus_timeout=30
 _bus_elapsed=0
