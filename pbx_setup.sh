@@ -66,7 +66,7 @@ log "Starting preflight checks..."
 [[ -n "$PUBLIC_IP" ]]  || die "Cannot determine keepalived VIP — is keepalived running?"
 
 # Dependency audit
-for cmd in homectl podman zfs machinectl openssl ip awk getent loginctl; do
+for cmd in podman zfs machinectl openssl ip awk getent loginctl; do
     command -v "$cmd" >/dev/null 2>&1 || die "Missing dependency: $cmd"
 done
 
@@ -91,40 +91,64 @@ mkdir -p "$PBX_MOUNT"/{etc/asterisk,var/lib/asterisk/moh,build}
 chown -R "$PBX_UID:$PBX_UID" "$PBX_MOUNT"
 
 ## SECTION 4: IDENTITY MANAGEMENT
-# homectl non-interactive pattern: pass password via NEWPASSWORD env var.
-# This is the documented method — homectl reads NEWPASSWORD from the
-# environment for both create and activate, bypassing the TTY prompt.
-# --storage=directory activate is a bind mount only; password is still
-# required by homectl protocol even without encryption.
-PBX_HOME_PASS=$(openssl rand -hex 16)
+# Ubuntu 25.10 / systemd 257 with libnss-systemd installed and nsswitch.conf
+# already containing "systemd" in passwd/group/shadow lines.
+# We provision the account via JSON drop-in files in /etc/userdb/ — no
+# homectl, no useradd, no PAM, no password prompt of any kind.
+# nss-systemd picks up the record immediately; getent passwd resolves it.
+# The group record is required — nss-systemd needs both .user and .group.
+PBXADMIN_HOME="/home/$PBX_USER"
 
-if ! getent passwd "$PBX_USER" >/dev/null; then
-    log "Creating service account $PBX_USER (directory storage)"
-    NEWPASSWORD="$PBX_HOME_PASS" homectl create "$PBX_USER" \
-        --storage=directory \
-        --uid="$PBX_UID" \
-        --shell=/bin/bash \
-        --enforce-password-policy=no
+if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
+    log "Provisioning $PBX_USER via /etc/userdb/ JSON drop-in"
+    mkdir -p /etc/userdb
+
+    # User record — no "secret" section means no password required for activation
+    cat > "/etc/userdb/${PBX_USER}.user" << USEREOF
+{
+  "userName": "$PBX_USER",
+  "uid": $PBX_UID,
+  "gid": $PBX_UID,
+  "realName": "PBX Admin",
+  "homeDirectory": "$PBXADMIN_HOME",
+  "shell": "/bin/bash",
+  "disposition": "regular"
+}
+USEREOF
+    chmod 644 "/etc/userdb/${PBX_USER}.user"
+
+    # Group record — required alongside the user record
+    cat > "/etc/userdb/${PBX_USER}.group" << GRPEOF
+{
+  "groupName": "$PBX_USER",
+  "gid": $PBX_UID,
+  "members": ["$PBX_USER"]
+}
+GRPEOF
+    chmod 644 "/etc/userdb/${PBX_USER}.group"
 fi
 
-# Activate the home directory (bind mount) — required before user@UID.service
-log "Activating home directory for $PBX_USER..."
-NEWPASSWORD="$PBX_HOME_PASS" homectl activate "$PBX_USER" \
-    || die "homectl activate failed for $PBX_USER"
+# Verify nss-systemd can resolve the account before proceeding
+getent passwd "$PBX_USER" >/dev/null 2>&1 \
+    || die "nss-systemd cannot resolve $PBX_USER — check /etc/userdb/ and nsswitch.conf"
+
+# Home directory — plain directory, no homed bind mount lifecycle
+mkdir -p "$PBXADMIN_HOME"
+chown "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME"
+chmod 0700 "$PBXADMIN_HOME"
 
 log "Enabling linger for $PBX_USER"
 loginctl enable-linger "$PBX_USER"
 loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
     || die "Linger activation failed for $PBX_USER"
 
-# user@UID.service is a real systemd template unit (see user@.service(5)).
-# linger alone does not start it on a fresh account with no prior session.
+# Explicitly start the user manager — linger alone does not start it on a
+# fresh account. user@UID.service is a documented systemd template unit.
 log "Starting user@${PBX_UID}.service..."
 systemctl start "user@${PBX_UID}.service" \
     || die "Failed to start user@${PBX_UID}.service"
 
-# user-runtime-dir@UID.service creates /run/user/UID and the D-Bus socket
-# asynchronously — poll until the socket is ready before machinectl calls
+# Poll for D-Bus session socket created by user-runtime-dir@UID.service
 log "Waiting for session bus at /run/user/${PBX_UID}/bus..."
 _bus_timeout=30
 _bus_elapsed=0
@@ -138,9 +162,6 @@ done
 log "Session bus ready after ${_bus_elapsed}s"
 unset _bus_timeout _bus_elapsed
 
-# Dynamic home resolution (Rule 10)
-PBXADMIN_HOME=$(getent passwd "$PBX_USER" | cut -d: -f6)
-[[ -n "$PBXADMIN_HOME" ]] || die "Could not resolve home for $PBX_USER"
 USER_QUADLET_DIR="$PBXADMIN_HOME/.config/containers/systemd"
 
 ## SECTION 5: CONFIG GENERATION + HARDENING
@@ -293,11 +314,10 @@ CRED_FILE=$(mktemp /dev/shm/pbx-creds-XXXXXX)
 chmod 600 "$CRED_FILE"
 {
     echo "--- PBX DEPLOYMENT SECRETS $(date) ---"
-    echo "Keepalived VIP:    $PUBLIC_IP"
-    echo "pbxadmin password: $PBX_HOME_PASS"
-    echo "Endpoint 1000:     $PASS_1000"
-    echo "Endpoint 2600:     $PASS_2600"
-    echo "RTP Range:         $RTP_START - $RTP_END"
+    echo "Keepalived VIP: $PUBLIC_IP"
+    echo "Endpoint 1000:  $PASS_1000"
+    echo "Endpoint 2600:  $PASS_2600"
+    echo "RTP Range:      $RTP_START - $RTP_END"
     echo "Note: RAM-backed tmpfs — cleared on reboot."
 } > "$CRED_FILE"
 log "SUCCESS: Secrets at $CRED_FILE (memory-only)"
