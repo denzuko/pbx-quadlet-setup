@@ -99,11 +99,18 @@ chown -R "$PBX_UID:$PBX_UID" "$PBX_MOUNT"
 # The group record is required — nss-systemd needs both .user and .group.
 PBXADMIN_HOME="/home/$PBX_USER"
 
+# systemd-userdbd must be running before writing /etc/userdb/ records
+# AND before any loginctl/logind calls — logind resolves users via userdbd.
+# Start it first so the entire account lifecycle sees the JSON drop-in.
+log "Ensuring systemd-userdbd is running..."
+systemctl start systemd-userdbd \
+    || die "Failed to start systemd-userdbd"
+
 if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
     log "Provisioning $PBX_USER via /etc/userdb/ JSON drop-in"
     mkdir -p /etc/userdb
 
-    # User record — no "secret" section means no password required for activation
+    # User record — no "secret" section means no password required
     cat > "/etc/userdb/${PBX_USER}.user" << USEREOF
 {
   "userName": "$PBX_USER",
@@ -117,7 +124,7 @@ if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
 USEREOF
     chmod 644 "/etc/userdb/${PBX_USER}.user"
 
-    # Group record — required alongside the user record
+    # Group record — nss-systemd requires both .user and .group
     cat > "/etc/userdb/${PBX_USER}.group" << GRPEOF
 {
   "groupName": "$PBX_USER",
@@ -126,23 +133,23 @@ USEREOF
 }
 GRPEOF
     chmod 644 "/etc/userdb/${PBX_USER}.group"
+
+    # Give userdbd a moment to pick up the new drop-in files
+    sleep 1
 fi
 
 # Verify nss-systemd can resolve the account before proceeding
-getent passwd "$PBX_USER" >/dev/null 2>&1 \
-    || die "nss-systemd cannot resolve $PBX_USER — check /etc/userdb/ and nsswitch.conf"
+if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
+    die "nss-systemd cannot resolve $PBX_USER — check /etc/userdb/ and nsswitch.conf"
+fi
+log "Account $PBX_USER resolved via nss-systemd"
 
 # Home directory — plain directory, no homed bind mount lifecycle
 mkdir -p "$PBXADMIN_HOME"
 chown "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME"
 chmod 0700 "$PBXADMIN_HOME"
 
-# Ensure systemd-userdbd is running so logind can resolve the JSON drop-in
-# record before we call enable-linger. Without this, logind may not yet
-# see the /etc/userdb/ account and returns "No such process".
-systemctl start systemd-userdbd 2>/dev/null || true
-
-# Enable linger by UID — avoids logind name-lookup race with nss-systemd
+# Enable linger by UID — logind resolves via userdbd which is now running
 log "Enabling linger for $PBX_USER (UID $PBX_UID)"
 loginctl enable-linger "$PBX_UID"
 loginctl show-user "$PBX_UID" | grep -q "Linger=yes" \
