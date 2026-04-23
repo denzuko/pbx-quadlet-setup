@@ -237,7 +237,7 @@ cat > "$USER_QUADLET_DIR/asterisk.container" << EOF
 Description=Asterisk PBX Rootless Container
 After=network-online.target
 [Container]
-Image=localhost/asterisk-full:latest
+Image=asterisk.build
 ContainerName=asterisk-pbx
 AddHost=host.containers.internal:host-gateway
 Volume=$PBX_MOUNT/etc/asterisk:/etc/asterisk:Z
