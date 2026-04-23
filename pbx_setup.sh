@@ -146,6 +146,33 @@ USER_QUADLET_DIR="$PBXADMIN_HOME/.config/containers/systemd"
 ## SECTION 5: CONFIG GENERATION + HARDENING
 log "Generating Asterisk configs for VIP: $PUBLIC_IP"
 
+# asterisk.conf is required — without it Asterisk cannot locate any other
+# config files. The volume mount replaces /etc/asterisk entirely so we must
+# generate it; the Alpine asterisk package provides no default.
+cat > "$PBX_MOUNT/etc/asterisk/asterisk.conf" << 'EOF'
+[directories]
+astetcdir => /etc/asterisk
+astmoddir => /usr/lib/asterisk/modules
+astvarlibdir => /var/lib/asterisk
+astdbdir => /var/lib/asterisk
+astkeydir => /var/lib/asterisk
+astdatadir => /var/lib/asterisk
+astagidir => /var/lib/asterisk/agi-bin
+astspooldir => /var/spool/asterisk
+astrundir => /var/run/asterisk
+astlogdir => /var/log/asterisk
+[options]
+documentation_language = en_US
+EOF
+chmod 640 "$PBX_MOUNT/etc/asterisk/asterisk.conf"
+
+# modules.conf — autoload everything; no manual module list needed
+cat > "$PBX_MOUNT/etc/asterisk/modules.conf" << 'EOF'
+[modules]
+autoload = yes
+EOF
+chmod 640 "$PBX_MOUNT/etc/asterisk/modules.conf"
+
 cat > "$PBX_MOUNT/etc/asterisk/pjsip.conf" << EOF
 [transport-udp]
 type=transport
