@@ -109,16 +109,19 @@ loginctl enable-linger "$PBX_USER"
 loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
     || die "Linger activation failed for $PBX_USER"
 
-# Wait for user@UID.service to start and D-Bus session socket to appear.
-# loginctl enable-linger triggers user@2000.service asynchronously —
-# machinectl shell will fail with "No such file or directory" if called
-# before /run/user/$PBX_UID/bus exists.
-log "Waiting for user session bus at /run/user/$PBX_UID/bus..."
+# linger marks the user but does NOT start user@UID.service on a fresh
+# account with no prior session. Explicitly start the user manager unit
+# (requires root), then poll for the D-Bus socket before machinectl calls.
+log "Starting user@${PBX_UID}.service..."
+systemctl start "user@${PBX_UID}.service" \
+    || die "Failed to start user@${PBX_UID}.service"
+
+log "Waiting for session bus at /run/user/${PBX_UID}/bus..."
 _bus_timeout=30
 _bus_elapsed=0
-until [[ -S "/run/user/$PBX_UID/bus" ]]; do
+until [[ -S "/run/user/${PBX_UID}/bus" ]]; do
     if (( _bus_elapsed >= _bus_timeout )); then
-        die "Timed out waiting for /run/user/$PBX_UID/bus (user@${PBX_UID}.service may have failed)"
+        die "Timed out waiting for /run/user/${PBX_UID}/bus"
     fi
     sleep 1
     (( _bus_elapsed++ ))
