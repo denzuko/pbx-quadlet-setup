@@ -66,7 +66,7 @@ log "Starting preflight checks..."
 [[ -n "$PUBLIC_IP" ]]  || die "Cannot determine keepalived VIP — is keepalived running?"
 
 # Dependency audit
-for cmd in podman zfs machinectl openssl ip awk getent loginctl; do
+for cmd in podman zfs machinectl openssl ip awk getent loginctl useradd groupadd; do
     command -v "$cmd" >/dev/null 2>&1 || die "Missing dependency: $cmd"
 done
 
@@ -91,100 +91,46 @@ mkdir -p "$PBX_MOUNT"/{etc/asterisk,var/lib/asterisk/moh,build}
 chown -R "$PBX_UID:$PBX_UID" "$PBX_MOUNT"
 
 ## SECTION 4: IDENTITY MANAGEMENT
-# Ubuntu 25.10 / systemd 257 with libnss-systemd installed and nsswitch.conf
-# already containing "systemd" in passwd/group/shadow lines.
-# We provision the account via JSON drop-in files in /etc/userdb/ — no
-# homectl, no useradd, no PAM, no password prompt of any kind.
-# nss-systemd picks up the record immediately; getent passwd resolves it.
-# The group record is required — nss-systemd needs both .user and .group.
+# POSIX useradd/groupadd — resolved by every layer without exception:
+# PID 1, logind, PAM, nss-systemd, glibc getpwuid(). No Varlink,
+# no drop-in files, no NSS ordering dependencies.
 PBXADMIN_HOME="/home/$PBX_USER"
 
-# systemd-userdbd must be running before writing /etc/userdb/ records
-# AND before any loginctl/logind calls — logind resolves users via userdbd.
-# Start it first so the entire account lifecycle sees the JSON drop-in.
-log "Ensuring systemd-userdbd is running..."
-systemctl start systemd-userdbd \
-    || die "Failed to start systemd-userdbd"
+if ! getent group "$PBX_USER" >/dev/null 2>&1; then
+    log "Creating group $PBX_USER (GID $PBX_UID)"
+    groupadd --gid "$PBX_UID" "$PBX_USER"
+fi
 
 if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
-    log "Provisioning $PBX_USER via /etc/userdb/ JSON drop-in"
-    mkdir -p /etc/userdb
-
-    # User record — no "secret" section means no password required
-    cat > "/etc/userdb/${PBX_USER}.user" << USEREOF
-{
-  "userName": "$PBX_USER",
-  "uid": $PBX_UID,
-  "gid": $PBX_UID,
-  "realName": "PBX Admin",
-  "homeDirectory": "$PBXADMIN_HOME",
-  "shell": "/bin/bash",
-  "disposition": "regular"
-}
-USEREOF
-    chmod 644 "/etc/userdb/${PBX_USER}.user"
-
-    # Group record — nss-systemd requires both .user and .group
-    cat > "/etc/userdb/${PBX_USER}.group" << GRPEOF
-{
-  "groupName": "$PBX_USER",
-  "gid": $PBX_UID,
-  "members": ["$PBX_USER"]
-}
-GRPEOF
-    chmod 644 "/etc/userdb/${PBX_USER}.group"
-
-    # Give userdbd a moment to pick up the new drop-in files
-    sleep 1
+    log "Creating user $PBX_USER (UID $PBX_UID)"
+    useradd \
+        --uid "$PBX_UID" \
+        --gid "$PBX_UID" \
+        --home-dir "$PBXADMIN_HOME" \
+        --create-home \
+        --shell /bin/bash \
+        --no-user-group \
+        "$PBX_USER"
 fi
 
-# Ensure systemd is first in nsswitch.conf so logind resolves /etc/userdb/
-# drop-ins before falling back to files. Without this loginctl enable-linger
-# fails because logind's getpwuid() hits the files resolver first and the
-# synthesized record from NSS does not satisfy logind's user lookup.
-log "Ensuring systemd is first in nsswitch.conf for passwd/group..."
-if ! grep -qP '^passwd:\s+systemd' /etc/nsswitch.conf; then
-    sed -i \
-        -e 's|^passwd:.*|passwd:         systemd files|' \
-        -e 's|^group:.*|group:          systemd files|' \
-        /etc/nsswitch.conf
-    log "nsswitch.conf updated: systemd now first for passwd/group"
-    # logind reads nsswitch.conf once at startup — restart so it picks up new order
-    systemctl restart systemd-logind
-    log "systemd-logind restarted to pick up new NSS order"
-fi
+getent passwd "$PBX_USER" >/dev/null 2>&1 \
+    || die "Failed to verify user $PBX_USER"
+log "User $PBX_USER ready (UID $PBX_UID)"
 
-# Verify nss-systemd can resolve the account before proceeding
-if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
-    die "nss-systemd cannot resolve $PBX_USER — check /etc/userdb/ and nsswitch.conf"
-fi
-log "Account $PBX_USER resolved via nss-systemd"
+# Lock account — service account, no interactive login
+passwd -l "$PBX_USER" >/dev/null 2>&1 || true
 
-# Home directory — plain directory, no homed bind mount lifecycle
-mkdir -p "$PBXADMIN_HOME"
-chown "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME"
-chmod 0700 "$PBXADMIN_HOME"
-
-# Enable linger by writing directly to /var/lib/systemd/linger/.
-# loginctl enable-linger resolves users via logind's internal lookup
-# which does not use nss-systemd and cannot see /etc/userdb/ drop-ins.
-# Writing the file directly is what loginctl does internally anyway —
-# it is the documented mechanism (see logind.conf(5) and the linger dir).
 log "Enabling linger for $PBX_USER"
-mkdir -p /var/lib/systemd/linger
-touch "/var/lib/systemd/linger/${PBX_USER}"
-[[ -f "/var/lib/systemd/linger/${PBX_USER}" ]] \
-    || die "Linger file creation failed for $PBX_USER"
-# Notify logind to re-read linger state
-systemctl kill -s HUP systemd-logind.service 2>/dev/null || true
+loginctl enable-linger "$PBX_USER"
+loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
+    || die "Linger activation failed for $PBX_USER"
 
-# Explicitly start the user manager — linger alone does not start it on a
-# fresh account. user@UID.service is a documented systemd template unit.
+# Start user manager — linger alone does not start it on a fresh account
 log "Starting user@${PBX_UID}.service..."
 systemctl start "user@${PBX_UID}.service" \
     || die "Failed to start user@${PBX_UID}.service"
 
-# Poll for D-Bus session socket created by user-runtime-dir@UID.service
+# Poll for D-Bus session socket
 log "Waiting for session bus at /run/user/${PBX_UID}/bus..."
 _bus_timeout=30
 _bus_elapsed=0
