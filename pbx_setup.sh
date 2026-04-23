@@ -39,21 +39,22 @@ trap cleanup EXIT
 
 # ── Programmatic VIP Retrieval (Rule 15) ────────────────────────────────────
 # keepalived assigns the VIP as a secondary address on the VRRP interface.
-# Read directly from kernel interface state via ip(1); /proc/net/fib_trie
-# as fallback. /var/run/keepalived.pid is the daemon PID only — not the VIP.
+# grep -oP exits 1 on no match — use || true to prevent set -e from firing
+# before log() and die() are available to report the failure.
 PUBLIC_IP=""
 
-# Primary: grep -oP for bulletproof extraction of secondary address
-# keepalived marks the VIP with the "secondary" flag on the VRRP interface
+# Primary: secondary address on the VRRP interface
 PUBLIC_IP=$(ip -4 addr show dev "$VRRP_IFACE" 2>/dev/null \
-    | grep -oP 'inet \K[\d.]+(?=.*secondary)')
+    | grep -oP 'inet \K[\d.]+(?=.*secondary)' || true)
 
-# Fallback: scan all interfaces for any secondary address
+# Fallback: any secondary address on any interface
 if [[ -z "$PUBLIC_IP" ]]; then
     PUBLIC_IP=$(ip -4 addr show 2>/dev/null \
         | grep -oP 'inet \K[\d.]+(?=.*secondary)' \
-        | head -1)
+        | head -1 || true)
 fi
+
+log "VIP detection: ${PUBLIC_IP:-not found}"
 
 # Secret generation (ephemeral; written only to /dev/shm later)
 PASS_1000=$(openssl rand -hex 16)
