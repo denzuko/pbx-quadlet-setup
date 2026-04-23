@@ -269,8 +269,8 @@ ContainerName=asterisk-pbx
 AddHost=host.containers.internal:host-gateway
 Volume=$PBX_MOUNT/etc/asterisk:/etc/asterisk:Z
 Volume=$PBX_MOUNT/var/lib/asterisk/moh:/var/lib/asterisk/moh:Z
-PublishPort=$PUBLIC_IP:5060:5060/udp
-PublishPort=$PUBLIC_IP:5060:5060/tcp
+PublishPort=127.0.0.1:5060:5060/udp
+PublishPort=127.0.0.1:5060:5060/tcp
 PublishPort=$PUBLIC_IP:$RTP_START-$RTP_END:$RTP_START-$RTP_END/udp
 [Service]
 Restart=always
