@@ -43,22 +43,16 @@ trap cleanup EXIT
 # as fallback. /var/run/keepalived.pid is the daemon PID only — not the VIP.
 PUBLIC_IP=""
 
-# Primary: ip(1) — secondary flag set by keepalived on MASTER node
+# Primary: grep -oP for bulletproof extraction of secondary address
+# keepalived marks the VIP with the "secondary" flag on the VRRP interface
 PUBLIC_IP=$(ip -4 addr show dev "$VRRP_IFACE" 2>/dev/null \
-    | awk '/inet / && /secondary/ {sub(/\/.*/, "", $2); print $2; exit}')
+    | grep -oP 'inet \K[\d.]+(?=.*secondary)')
 
-# Fallback: /proc/net/fib_trie — enumerate all kernel-bound addresses,
-# subtract the interface primary to isolate the VIP
+# Fallback: scan all interfaces for any secondary address
 if [[ -z "$PUBLIC_IP" ]]; then
-    _PRIMARY=$(ip -4 addr show dev "$VRRP_IFACE" 2>/dev/null \
-        | awk '/inet / && !/secondary/ {sub(/\/.*/, "", $2); print $2; exit}')
-    PUBLIC_IP=$(awk '
-        /32 host/ { print ip }
-        { ip = $1 }
-    ' /proc/net/fib_trie 2>/dev/null \
-        | grep -v "^127\\.|^0\\.|^255\\.|^${_PRIMARY}$" \
+    PUBLIC_IP=$(ip -4 addr show 2>/dev/null \
+        | grep -oP 'inet \K[\d.]+(?=.*secondary)' \
         | head -1)
-    unset _PRIMARY
 fi
 
 # Secret generation (ephemeral; written only to /dev/shm later)
@@ -108,7 +102,9 @@ if ! getent passwd "$PBX_USER" >/dev/null; then
         --storage=directory \
         --uid="$PBX_UID" \
         --shell=/bin/bash \
-        --enforce-password-policy=no
+        --enforce-password-policy=no \
+        --password-hint="" \
+        --password-setup=no
 fi
 
 # Activate the home directory (bind mount) — required for user@UID.service
@@ -256,8 +252,12 @@ chown -R "$PBX_UID:$PBX_UID" "$USER_QUADLET_DIR"
 
 ## SECTION 7: SERVICE ACTIVATION
 log "Activating user units via machinectl"
+# Quadlet units are generated units — cannot use "enable --now".
+# daemon-reload triggers the Quadlet generator which writes the service
+# and honours WantedBy=default.target automatically.
+# Use "start" only — the generator has already wired up the target dependency.
 machinectl shell "$PBX_USER"@ /bin/systemctl --user daemon-reload
-machinectl shell "$PBX_USER"@ /bin/systemctl --user enable --now asterisk
+machinectl shell "$PBX_USER"@ /bin/systemctl --user start asterisk
 
 ## SECTION 8: SMOKE TESTS
 log "Waiting for container startup (max ${CONTAINER_STARTUP_TIMEOUT}s)..."
