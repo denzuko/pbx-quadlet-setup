@@ -17,7 +17,7 @@ PBX_MOUNT="/srv/pbx"
 RTP_START=10000
 RTP_END=10100
 VRRP_IFACE="wlan0"              # Interface keepalived manages the VIP on
-MOH_STREAM_URL="http://host.containers.internal:8000/live.mp3"
+MOH_STREAM_URL="https://klaxon.dapla.net/live.mp3"
 CONTAINER_STARTUP_TIMEOUT=60   # seconds
 CRED_FILE=""                   # set after mktemp; used by trap
 
