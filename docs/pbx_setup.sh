@@ -91,27 +91,25 @@ mkdir -p "$PBX_MOUNT"/{etc/asterisk,var/lib/asterisk/moh,build}
 chown -R "$PBX_UID:$PBX_UID" "$PBX_MOUNT"
 
 ## SECTION 4: IDENTITY MANAGEMENT
-# homectl --storage=directory:
-#   - create with --enforce-password-policy=no so activation is non-interactive
-#   - activate performs a bind mount of the home dir; required before
-#     user@UID.service can access the home to start the user manager
-#   - linger + explicit systemctl start user@UID.service brings up the
-#     user manager without requiring an interactive login session
+# homectl non-interactive pattern: pass password via NEWPASSWORD env var.
+# This is the documented method — homectl reads NEWPASSWORD from the
+# environment for both create and activate, bypassing the TTY prompt.
+# --storage=directory activate is a bind mount only; password is still
+# required by homectl protocol even without encryption.
+PBX_HOME_PASS=$(openssl rand -hex 16)
+
 if ! getent passwd "$PBX_USER" >/dev/null; then
     log "Creating service account $PBX_USER (directory storage)"
-    homectl create "$PBX_USER" \
+    NEWPASSWORD="$PBX_HOME_PASS" homectl create "$PBX_USER" \
         --storage=directory \
         --uid="$PBX_UID" \
         --shell=/bin/bash \
-        --enforce-password-policy=no \
-        --password-hint="" \
-        --password-setup=no
+        --enforce-password-policy=no
 fi
 
-# Activate the home directory (bind mount) — required for user@UID.service
-# --storage=directory activation is non-interactive and needs no password
+# Activate the home directory (bind mount) — required before user@UID.service
 log "Activating home directory for $PBX_USER..."
-homectl activate "$PBX_USER" \
+NEWPASSWORD="$PBX_HOME_PASS" homectl activate "$PBX_USER" \
     || die "homectl activate failed for $PBX_USER"
 
 log "Enabling linger for $PBX_USER"
@@ -295,10 +293,11 @@ CRED_FILE=$(mktemp /dev/shm/pbx-creds-XXXXXX)
 chmod 600 "$CRED_FILE"
 {
     echo "--- PBX DEPLOYMENT SECRETS $(date) ---"
-    echo "Keepalived VIP: $PUBLIC_IP"
-    echo "Endpoint 1000:  $PASS_1000"
-    echo "Endpoint 2600:  $PASS_2600"
-    echo "RTP Range:      $RTP_START - $RTP_END"
+    echo "Keepalived VIP:    $PUBLIC_IP"
+    echo "pbxadmin password: $PBX_HOME_PASS"
+    echo "Endpoint 1000:     $PASS_1000"
+    echo "Endpoint 2600:     $PASS_2600"
+    echo "RTP Range:         $RTP_START - $RTP_END"
     echo "Note: RAM-backed tmpfs — cleared on reboot."
 } > "$CRED_FILE"
 log "SUCCESS: Secrets at $CRED_FILE (memory-only)"
