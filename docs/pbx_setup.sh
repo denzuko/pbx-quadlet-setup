@@ -38,26 +38,27 @@ cleanup() {
 trap cleanup EXIT
 
 # ── Programmatic VIP Retrieval (Rule 15) ────────────────────────────────────
-# ── Programmatic VIP Retrieval (Rule 15) ────────────────────────────────────
-# keepalived manages the VIP on wlan0 as a secondary address.
-# Runtime artifact is /var/run/keepalived.pid (not keepalived/keepalived.vip).
+# keepalived assigns the VIP as a secondary address on the VRRP interface.
+# Read directly from kernel interface state via ip(1); /proc/net/fib_trie
+# as fallback. /var/run/keepalived.pid is the daemon PID only — not the VIP.
 PUBLIC_IP=""
 
-# Confirm keepalived is running
-if [[ ! -f /var/run/keepalived.pid ]] || ! kill -0 "$(cat /var/run/keepalived.pid 2>/dev/null)" 2>/dev/null; then
-    die "keepalived is not running (no valid PID at /var/run/keepalived.pid)"
-fi
+# Primary: ip(1) — secondary flag set by keepalived on MASTER node
+PUBLIC_IP=$(ip -4 addr show dev "$VRRP_IFACE" 2>/dev/null \
+    | awk '/inet / && /secondary/ {sub(/\/.*/, "", $2); print $2; exit}')
 
-# VIP is assigned as a secondary address on the VRRP interface (wlan0)
-PUBLIC_IP=$(ip -4 addr show dev "$VRRP_IFACE" \
-    | awk '/inet .* secondary/{print $2}' \
-    | cut -d/ -f1 | head -1) || true
-
-# Fallback: any interface secondary (handles interface name changes)
+# Fallback: /proc/net/fib_trie — enumerate all kernel-bound addresses,
+# subtract the interface primary to isolate the VIP
 if [[ -z "$PUBLIC_IP" ]]; then
-    PUBLIC_IP=$(ip -4 addr show scope global \
-        | awk '/inet .* secondary/{print $2}' \
-        | cut -d/ -f1 | head -1) || true
+    _PRIMARY=$(ip -4 addr show dev "$VRRP_IFACE" 2>/dev/null \
+        | awk '/inet / && !/secondary/ {sub(/\/.*/, "", $2); print $2; exit}')
+    PUBLIC_IP=$(awk '
+        /32 host/ { print ip }
+        { ip = $1 }
+    ' /proc/net/fib_trie 2>/dev/null \
+        | grep -v "^127\\.|^0\\.|^255\\.|^${_PRIMARY}$" \
+        | head -1)
+    unset _PRIMARY
 fi
 
 # Secret generation (ephemeral; written only to /dev/shm later)
