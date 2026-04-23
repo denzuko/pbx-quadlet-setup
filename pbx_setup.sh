@@ -138,6 +138,19 @@ GRPEOF
     sleep 1
 fi
 
+# Ensure systemd is first in nsswitch.conf so logind resolves /etc/userdb/
+# drop-ins before falling back to files. Without this loginctl enable-linger
+# fails because logind's getpwuid() hits the files resolver first and the
+# synthesized record from NSS does not satisfy logind's user lookup.
+log "Ensuring systemd is first in nsswitch.conf for passwd/group..."
+if ! grep -qP '^passwd:\s+systemd' /etc/nsswitch.conf; then
+    sed -i \
+        -e 's|^passwd:.*|passwd:         systemd files|' \
+        -e 's|^group:.*|group:          systemd files|' \
+        /etc/nsswitch.conf
+    log "nsswitch.conf updated: systemd now first for passwd/group"
+fi
+
 # Verify nss-systemd can resolve the account before proceeding
 if ! getent passwd "$PBX_USER" >/dev/null 2>&1; then
     die "nss-systemd cannot resolve $PBX_USER — check /etc/userdb/ and nsswitch.conf"
