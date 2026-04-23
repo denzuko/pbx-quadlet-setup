@@ -180,8 +180,8 @@ protocol=udp
 bind=0.0.0.0:5060
 external_signaling_address=$PUBLIC_IP
 external_media_address=$PUBLIC_IP
-local_net=127.0.0.1/32
-local_net=10.88.0.0/16
+local_net=127.0.0.0/8
+local_net=192.168.0.0/16
 [1000]
 type=endpoint
 context=from-internal
@@ -266,12 +266,9 @@ After=network-online.target
 [Container]
 Image=asterisk.build
 ContainerName=asterisk-pbx
-AddHost=host.containers.internal:host-gateway
+Network=host
 Volume=$PBX_MOUNT/etc/asterisk:/etc/asterisk:Z
 Volume=$PBX_MOUNT/var/lib/asterisk/moh:/var/lib/asterisk/moh:Z
-PublishPort=127.0.0.1:5060:5060/udp
-PublishPort=127.0.0.1:5060:5060/tcp
-PublishPort=$PUBLIC_IP:$RTP_START-$RTP_END:$RTP_START-$RTP_END/udp
 [Service]
 Restart=always
 [Install]
