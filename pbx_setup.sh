@@ -149,6 +149,9 @@ if ! grep -qP '^passwd:\s+systemd' /etc/nsswitch.conf; then
         -e 's|^group:.*|group:          systemd files|' \
         /etc/nsswitch.conf
     log "nsswitch.conf updated: systemd now first for passwd/group"
+    # logind reads nsswitch.conf once at startup — restart so it picks up new order
+    systemctl restart systemd-logind
+    log "systemd-logind restarted to pick up new NSS order"
 fi
 
 # Verify nss-systemd can resolve the account before proceeding
