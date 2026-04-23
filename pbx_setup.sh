@@ -109,6 +109,23 @@ loginctl enable-linger "$PBX_USER"
 loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
     || die "Linger activation failed for $PBX_USER"
 
+# Wait for user@UID.service to start and D-Bus session socket to appear.
+# loginctl enable-linger triggers user@2000.service asynchronously —
+# machinectl shell will fail with "No such file or directory" if called
+# before /run/user/$PBX_UID/bus exists.
+log "Waiting for user session bus at /run/user/$PBX_UID/bus..."
+_bus_timeout=30
+_bus_elapsed=0
+until [[ -S "/run/user/$PBX_UID/bus" ]]; do
+    if (( _bus_elapsed >= _bus_timeout )); then
+        die "Timed out waiting for /run/user/$PBX_UID/bus (user@${PBX_UID}.service may have failed)"
+    fi
+    sleep 1
+    (( _bus_elapsed++ ))
+done
+log "Session bus ready after ${_bus_elapsed}s"
+unset _bus_timeout _bus_elapsed
+
 # Dynamic home resolution (Rule 10)
 PBXADMIN_HOME=$(getent passwd "$PBX_USER" | cut -d: -f6)
 [[ -n "$PBXADMIN_HOME" ]] || die "Could not resolve home for $PBX_USER"
