@@ -104,18 +104,25 @@ if ! getent passwd "$PBX_USER" >/dev/null; then
         --shell=/bin/bash
 fi
 
+# homectl --storage=directory accounts must be activated before the user
+# manager (user@UID.service) can start. activate mounts the home directory
+# and makes it accessible to systemd-logind.
+log "Activating home for $PBX_USER..."
+homectl activate "$PBX_USER" \
+    || die "homectl activate failed for $PBX_USER"
+
 log "Enabling linger for $PBX_USER"
 loginctl enable-linger "$PBX_USER"
 loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
     || die "Linger activation failed for $PBX_USER"
 
-# linger marks the user but does NOT start user@UID.service on a fresh
-# account with no prior session. Explicitly start the user manager unit
-# (requires root), then poll for the D-Bus socket before machinectl calls.
+# Explicitly start user manager — linger alone does not start it on a
+# fresh account. Home must be activated first or user@UID.service fails.
 log "Starting user@${PBX_UID}.service..."
 systemctl start "user@${PBX_UID}.service" \
     || die "Failed to start user@${PBX_UID}.service"
 
+# Poll for D-Bus session socket — created asynchronously by systemd-logind
 log "Waiting for session bus at /run/user/${PBX_UID}/bus..."
 _bus_timeout=30
 _bus_elapsed=0
