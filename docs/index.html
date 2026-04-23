@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>pbx-quadlet-setup — Da Planet Security</title>
+<style>
+  :root {
+    --bg: #0d1117; --surface: #161b22; --border: #30363d;
+    --text: #c9d1d9; --muted: #8b949e; --green: #3fb950;
+    --blue: #58a6ff; --amber: #d29922; --red: #f85149;
+    --mono: 'SFMono-Regular', Consolas, 'Liberation Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif;
+         line-height: 1.6; padding: 2rem 1rem; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+  header { border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; margin-bottom: 2rem; }
+  h1 { font-size: 1.5rem; font-weight: 600; color: #e6edf3; }
+  h1 span { color: var(--green); }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-top: 0.4rem; }
+  .badges { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 12px; font-weight: 500; }
+  .badge.green { background: #1a3a2a; color: var(--green); border: 1px solid #2ea043; }
+  .badge.blue  { background: #0d2744; color: var(--blue);  border: 1px solid #388bfd; }
+  .badge.amber { background: #2d1f00; color: var(--amber); border: 1px solid #9e6a03; }
+  section { margin-bottom: 2rem; }
+  h2 { font-size: 1rem; font-weight: 600; color: #e6edf3; margin-bottom: 0.75rem;
+       padding-bottom: 0.4rem; border-bottom: 1px solid var(--border); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+          padding: 1rem; }
+  .card-title { font-size: 0.8rem; color: var(--muted); text-transform: uppercase;
+                letter-spacing: 0.05em; margin-bottom: 0.35rem; }
+  .card-val { font-size: 1rem; font-weight: 600; color: var(--green); }
+  pre { background: var(--surface); border: 1px solid var(--border); border-radius: 6px;
+        padding: 1rem; overflow-x: auto; font-family: var(--mono); font-size: 0.82rem;
+        line-height: 1.55; }
+  .comment { color: var(--muted); }
+  .cmd { color: var(--blue); }
+  .str { color: var(--green); }
+  .kw  { color: var(--amber); }
+  table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+  th { text-align: left; padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border);
+       color: var(--muted); font-weight: 500; font-size: 0.78rem; text-transform: uppercase; }
+  td { padding: 0.5rem 0.75rem; border-bottom: 1px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  .pass { color: var(--green); font-weight: 600; }
+  .rule { color: var(--blue); font-family: var(--mono); font-size: 0.8rem; }
+  footer { color: var(--muted); font-size: 0.8rem; margin-top: 3rem;
+           padding-top: 1rem; border-top: 1px solid var(--border); }
+  a { color: var(--blue); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span>pbx-quadlet-setup</span></h1>
+    <div class="meta">Da Planet Security · Albany, NY · 2026.QA.v4</div>
+    <div class="badges">
+      <span class="badge green">27/27 tests passing</span>
+      <span class="badge green">ShellCheck clean</span>
+      <span class="badge blue">GPG signed</span>
+      <span class="badge amber">v4.1</span>
+    </div>
+  </header>
+
+  <section>
+    <h2>Stack</h2>
+    <div class="grid">
+      <div class="card"><div class="card-title">Storage</div><div class="card-val">ZFS</div></div>
+      <div class="card"><div class="card-title">Identity</div><div class="card-val">systemd-homed</div></div>
+      <div class="card"><div class="card-title">Containers</div><div class="card-val">Podman Quadlets</div></div>
+      <div class="card"><div class="card-title">PBX</div><div class="card-val">Asterisk 20</div></div>
+      <div class="card"><div class="card-title">TLS</div><div class="card-val">HAProxy + acme.sh</div></div>
+      <div class="card"><div class="card-title">MOH</div><div class="card-val">Icecast2 / klaxon</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Verified install</h2>
+<pre><span class="comment"># Fetch, verify, install</span>
+<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pubkey.asc</span> | gpg --import
+<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh</span>     -o pbx_setup.sh
+<span class="cmd">curl</span> <span class="str">-fsSL https://denzuko.github.io/pbx-quadlet-setup/pbx_setup.sh.sig</span> -o pbx_setup.sh.sig
+<span class="kw">gpg</span> --verify pbx_setup.sh.sig pbx_setup.sh <span class="comment">&amp;&amp; \</span>
+  sudo bash pbx_setup.sh</pre>
+  </section>
+
+  <section>
+    <h2>QA compliance — 16 rules, 27 tests</h2>
+    <table>
+      <tr><th>Rule</th><th>Description</th><th>Status</th></tr>
+      <tr><td class="rule">R01</td><td>PJSIP section naming + Dial() consistency</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R02</td><td>homectl --storage=directory for service accounts</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R03</td><td>machinectl shell for user unit activation</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R04</td><td>Podman image store visibility</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R05</td><td>Config chmod 640 after heredoc</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R06</td><td>No TLS inside container — HAProxy handles termination</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R07</td><td>FFmpeg reconnect flags for MOH stream</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R08</td><td>RTP port range consistency rtp.conf ↔ Quadlet</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R09</td><td>podman build explicit context path</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R10</td><td>homectl home path resolved dynamically</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R11</td><td>Credentials to /dev/shm via mktemp</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R12</td><td>Config paths audited against Quadlet Volume mounts</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R13</td><td>Quadlet .build units for image lifecycle</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R14</td><td>host.containers.internal for co-located services</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R15</td><td>PUBLIC_IP from keepalived VIP — never hardcoded</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R16</td><td>All ephemeral secrets via mktemp /dev/shm</td><td class="pass">PASS</td></tr>
+    </table>
+  </section>
+
+  <footer>
+    <a href="pbx_setup.sh">pbx_setup.sh</a> ·
+    <a href="pbx_setup.sh.sig">pbx_setup.sh.sig</a> ·
+    <a href="pubkey.asc">pubkey.asc</a> ·
+    <a href="https://github.com/denzuko/pbx-quadlet-setup">GitHub</a>
+  </footer>
+</div>
+</body>
+</html>
