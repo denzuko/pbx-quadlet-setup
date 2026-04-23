@@ -137,9 +137,15 @@ mkdir -p "$PBXADMIN_HOME"
 chown "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME"
 chmod 0700 "$PBXADMIN_HOME"
 
-log "Enabling linger for $PBX_USER"
-loginctl enable-linger "$PBX_USER"
-loginctl show-user "$PBX_USER" | grep -q "Linger=yes" \
+# Ensure systemd-userdbd is running so logind can resolve the JSON drop-in
+# record before we call enable-linger. Without this, logind may not yet
+# see the /etc/userdb/ account and returns "No such process".
+systemctl start systemd-userdbd 2>/dev/null || true
+
+# Enable linger by UID — avoids logind name-lookup race with nss-systemd
+log "Enabling linger for $PBX_USER (UID $PBX_UID)"
+loginctl enable-linger "$PBX_UID"
+loginctl show-user "$PBX_UID" | grep -q "Linger=yes" \
     || die "Linger activation failed for $PBX_USER"
 
 # Explicitly start the user manager — linger alone does not start it on a
