@@ -215,10 +215,13 @@ mkdir -p "$USER_QUADLET_DIR"
 chown -R "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME/.config"
 
 cat > "$PBX_MOUNT/build/Containerfile" << 'EOF'
-FROM debian:bookworm-slim
-RUN apt-get update && apt-get install -y \
-    asterisk asterisk-modules ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+FROM alpine:3.21
+RUN apk add --no-cache \
+    asterisk \
+    asterisk-ldap \
+    asterisk-srtp \
+    ffmpeg \
+    && rm -rf /var/cache/apk/*
 ENTRYPOINT ["asterisk", "-f"]
 EOF
 
