@@ -217,7 +217,7 @@ chown -R "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME/.config"
 cat > "$PBX_MOUNT/build/Containerfile" << 'EOF'
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y \
-    asterisk asterisk-modules ffmpeg libldap-2.5-0 libradiusclient-ng2 \
+    asterisk asterisk-modules ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 ENTRYPOINT ["asterisk", "-f"]
 EOF
