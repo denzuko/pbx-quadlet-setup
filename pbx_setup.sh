@@ -1,15 +1,12 @@
 #!/usr/bin/env bash
-## PBX INFRASTRUCTURE AUTOMATION SCRIPT v4.1
-## ARCHITECTURE: ZFS + homectl + Quadlet .build + Keepalived VIP
+## PBX INFRASTRUCTURE AUTOMATION SCRIPT v4.1.14
+## ARCHITECTURE: ZFS + useradd + Podman Quadlets + Keepalived VIP
 ## STANDARDS COMPLIANCE: 2026.QA.v4
 ##
-## Changes from v4.0:
-##   - SC2015: replaced && log || exit with explicit if blocks (smoke tests)
-##   - Added trap for ERR/EXIT to handle CRED_FILE cleanup on abort
-##   - Added UID collision preflight check
-##   - Added retry loop (with timeout) replacing hardcoded sleep 15
-##   - machinectl exit-code propagation documented; wrapped in explicit checks
-##   - PJSIP smoke test demoted to WARNING (endpoint reg is async post-start)
+## Identity: POSIX useradd/groupadd — resolved by PID 1, logind, PAM, glibc
+## Build:    Quadlet .build unit — Image=asterisk.build wires dependency
+## VIP:      ip(1) first global address on VRRP_IFACE (no secondary filter)
+## Secrets:  mktemp /dev/shm only, never stdout or persistent paths
 set -euo pipefail
 
 ## SECTION 1: VARIABLE DECLARATIONS
