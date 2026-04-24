@@ -207,9 +207,10 @@ context=from-internal
 disallow=all
 allow=ulaw
 auth=auth1000
-aors=aor1000
+aors=1000
 moh_suggest=daplanet-stream
 transport=transport-udp
+identify_by=username
 force_rport=yes
 rewrite_contact=yes
 rtp_symmetric=yes
@@ -219,7 +220,7 @@ type=auth
 auth_type=userpass
 password=$PASS_1000
 username=1000
-[aor1000]
+[1000]
 type=aor
 max_contacts=1
 [2600]
@@ -228,8 +229,9 @@ context=from-internal
 disallow=all
 allow=ulaw
 auth=auth2600
-aors=aor2600
+aors=2600
 transport=transport-udp
+identify_by=username
 force_rport=yes
 rewrite_contact=yes
 rtp_symmetric=yes
@@ -239,7 +241,7 @@ type=auth
 auth_type=userpass
 password=$PASS_2600
 username=2600
-[aor2600]
+[2600]
 type=aor
 max_contacts=1
 EOF
