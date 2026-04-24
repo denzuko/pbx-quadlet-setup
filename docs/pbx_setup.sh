@@ -61,6 +61,7 @@ log "VIP detection: ${PUBLIC_IP:-not found}"
 PASS_1000=$(openssl rand -hex 16)
 PASS_2600=$(openssl rand -hex 16)
 TURN_SECRET=$(openssl rand -hex 32)
+CONF_PIN=$(openssl rand -hex 2 | tr a-f 0-5 | cut -c1-4)
 
 ## SECTION 2: PREFLIGHT CHECKS
 log "Starting preflight checks..."
@@ -330,26 +331,121 @@ application=/usr/bin/ffmpeg -reconnect 1 -reconnect_streamed 1 -reconnect_delay_
 EOF
 
 cat > "$PBX_MOUNT/etc/asterisk/extensions.conf" << 'EOF'
+; pbx-quadlet-setup dialplan
+; Internal format: 4-digit extensions (XXXX)
+; NANP format:     PREFIX-XXXX (PhreakNet prefix assigned in v5.0)
+; from-phreaknet strips the 3-digit prefix and routes to from-internal
+
 [from-internal]
-; 1000 — listen-only stream (MOH daplanet-stream)
-exten => 1000,1,Answer()
+; --- 0 — operator intercept ---
+exten => 0,1,Dial(PJSIP/2600,20)
+same => n,Playback(pbx-invalid)
+same => n,Hangup()
+
+; --- 0100 — milliwatt tone (1004 Hz) ---
+exten => 0100,1,Answer()
 same => n,Playback(silence/1)
-same => n,MusicOnHold(daplanet-stream)
-; 1010 — echo test
-exten => 1010,1,Answer()
+same => n,PlayTones(1004)
+same => n,Wait(30)
+same => n,Hangup()
+
+; --- 0101 — echo test ---
+exten => 0101,1,Answer()
 same => n,Playback(demo-echotest)
 same => n,Echo()
 same => n,Playback(demo-thanks)
 same => n,Hangup()
-; 2600 — operator handset
+
+; --- 0102 — speaking clock ---
+exten => 0102,1,Answer()
+same => n,Playback(silence/1)
+same => n,SayUnixTime(0,UTC,HNS)
+same => n,Hangup()
+
+; --- 0103 — intercept / SIT tone ---
+exten => 0103,1,Answer()
+same => n,PlayTones(!950/333,!1400/333,!1800/333,0/0)
+same => n,Wait(2)
+same => n,Playback(ss-noservice)
+same => n,Hangup()
+
+; --- 0200 — open conference bridge ---
+exten => 0200,1,Answer()
+same => n,Playback(silence/1)
+same => n,ConfBridge(pbx-open)
+
+; --- 0201 — private conference (PIN) ---
+exten => 0201,1,Answer()
+same => n,Playback(silence/1)
+same => n,ConfBridge(pbx-private)
+
+; --- 0300 — MOTD / info line ---
+exten => 0300,1,Answer()
+same => n,Playback(silence/1)
+same => n,Playback(tt-monkeys)
+same => n,Hangup()
+
+; --- 0301 — Da Planet Security info ---
+exten => 0301,1,Answer()
+same => n,Playback(silence/1)
+same => n,Playback(tt-weasels)
+same => n,Hangup()
+
+; --- 1000 — radio stream (MOH daplanet-stream) ---
+exten => 1000,1,Answer()
+same => n,Playback(silence/1)
+same => n,MusicOnHold(daplanet-stream)
+
+; --- 2600 — operator handset ---
 exten => 2600,1,Dial(PJSIP/2600,20)
 same => n,Playback(pbx-invalid)
 same => n,Hangup()
-; invalid extension handler
+
+; --- invalid / timeout handlers ---
 exten => i,1,Playback(pbx-invalid)
 same => n,Hangup()
 exten => t,1,Hangup()
+
+; --- from-phreaknet — strip 3-digit prefix, route to from-internal ---
+; Activated in v5.0 when PhreakNet IAX2 trunk is configured
+[from-phreaknet]
+exten => _NXXZXXX,1,Goto(from-internal,${EXTEN:3},1)
+exten => i,1,Hangup()
+exten => t,1,Hangup()
 EOF
+
+# confbridge.conf — open and private conference rooms
+cat > "$PBX_MOUNT/etc/asterisk/confbridge.conf" << 'EOF'
+[general]
+
+[default_user]
+type=user
+music_on_hold_when_empty=yes
+music_on_hold_class=daplanet-stream
+announce_user_count=yes
+announce_join_leave=yes
+
+[default_bridge]
+type=bridge
+max_members=10
+
+[pbx-open]
+type=bridge
+max_members=20
+record_conference=no
+
+[pbx-private]
+type=bridge
+max_members=10
+record_conference=no
+
+[pbx-private-admin]
+type=user
+admin=yes
+marked=yes
+pin=$CONF_PIN
+EOF
+chmod 640 "$PBX_MOUNT/etc/asterisk/confbridge.conf"
 
 chmod 640 "$PBX_MOUNT"/etc/asterisk/*.conf
 chown -R "$PBX_UID:$PBX_UID" "$PBX_MOUNT/etc/asterisk"
@@ -504,6 +600,7 @@ chmod 600 "$CRED_FILE"
     echo "Endpoint 1000:  $PASS_1000"
     echo "Endpoint 2600:  $PASS_2600"
     echo "TURN Secret:    $TURN_SECRET"
+    echo "Conf PIN (0201): $CONF_PIN"
     echo "TURN Realm:     dapla.net"
     echo "STUN/TURN:      $PUBLIC_IP:3478"
     echo "RTP Range:      $RTP_START - $RTP_END"
