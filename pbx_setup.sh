@@ -302,14 +302,13 @@ mkdir -p "$USER_QUADLET_DIR"
 chown -R "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME/.config"
 
 cat > "$PBX_MOUNT/build/Containerfile" << 'EOF'
-FROM alpine:3.21
-RUN apk add --no-cache \
+FROM debian:trixie-slim
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
     asterisk \
-    asterisk-ldap \
-    asterisk-srtp \
     coturn \
     ffmpeg \
-    && rm -rf /var/cache/apk/*
+    && rm -rf /var/lib/apt/lists/*
 EOF
 
 cat > "$USER_QUADLET_DIR/pbx-stack.build" << EOF
