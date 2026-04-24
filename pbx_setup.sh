@@ -333,7 +333,7 @@ After=network-online.target
 Image=pbx-stack.build
 ContainerName=asterisk-pbx
 Network=host
-Exec=asterisk -f
+Exec=/usr/sbin/asterisk -f
 Volume=$PBX_MOUNT/etc/asterisk:/etc/asterisk:Z
 Volume=$PBX_MOUNT/var/lib/asterisk/moh:/var/lib/asterisk/moh:Z
 [Service]
