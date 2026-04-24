@@ -201,6 +201,10 @@ allow=ulaw
 auth=auth1000
 aors=aor1000
 moh_suggest=daplanet-stream
+force_rport=yes
+rewrite_contact=yes
+rtp_symmetric=yes
+direct_media=no
 [auth1000]
 type=auth
 auth_type=userpass
@@ -216,6 +220,10 @@ disallow=all
 allow=ulaw
 auth=auth2600
 aors=aor2600
+force_rport=yes
+rewrite_contact=yes
+rtp_symmetric=yes
+direct_media=no
 [auth2600]
 type=auth
 auth_type=userpass
