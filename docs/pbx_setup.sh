@@ -325,9 +325,11 @@ rtpend=$RTP_END
 EOF
 
 cat > "$PBX_MOUNT/etc/asterisk/musiconhold.conf" << EOF
+[general]
+
 [daplanet-stream]
 mode=custom
-application=/usr/bin/ffmpeg -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5 -i $MOH_STREAM_URL -ar 8000 -ac 1 -f s16le -acodec pcm_s16le pipe:1
+application=/usr/bin/ffmpeg -reconnect 1 -reconnect_streamed 5 -reconnect_delay_max 5 -i $MOH_STREAM_URL -ar 8000 -ac 1 -f s16le -acodec pcm_s16le pipe:1
 EOF
 
 cat > "$PBX_MOUNT/etc/asterisk/extensions.conf" << 'EOF'
@@ -359,7 +361,7 @@ same => n,Hangup()
 ; --- 0102 — speaking clock ---
 exten => 0102,1,Answer()
 same => n,Playback(silence/1)
-same => n,SayUnixTime(0,UTC,HNS)
+same => n,SayUnixTime(0,America/New_York,"'digits/at' IMp")
 same => n,Hangup()
 
 ; --- 0103 — intercept / SIT tone ---
