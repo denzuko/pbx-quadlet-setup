@@ -302,13 +302,20 @@ mkdir -p "$USER_QUADLET_DIR"
 chown -R "$PBX_UID:$PBX_UID" "$PBXADMIN_HOME/.config"
 
 cat > "$PBX_MOUNT/build/Containerfile" << 'EOF'
-FROM debian:trixie-slim
+FROM debian:bookworm-slim
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    asterisk \
-    coturn \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+    gnupg wget ca-certificates \
+    && wget -qO /tmp/aptly-pubkey.asc http://deb.freepbx.org/gpg/aptly-pubkey.asc \
+    && gpg --dearmor --yes -o /etc/apt/trusted.gpg.d/freepbx.gpg /tmp/aptly-pubkey.asc \
+    && echo "deb [arch=amd64] http://deb.freepbx.org/freepbx17-prod bookworm main" \
+       > /etc/apt/sources.list.d/freepbx.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+       asterisk22 \
+       asterisk22-core \
+       coturn \
+       ffmpeg \
+    && rm -rf /var/lib/apt/lists/* /tmp/aptly-pubkey.asc
 EOF
 
 cat > "$USER_QUADLET_DIR/pbx-stack.build" << EOF
