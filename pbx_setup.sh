@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-## PBX INFRASTRUCTURE AUTOMATION SCRIPT v4.1.14
-## ARCHITECTURE: ZFS + useradd + Podman Quadlets + Keepalived VIP
+## PBX INFRASTRUCTURE AUTOMATION SCRIPT v4.1.20
+## ARCHITECTURE: ZFS + POSIX useradd + Podman Quadlets + Keepalived VIP
 ## STANDARDS COMPLIANCE: 2026.QA.v4
 ##
 ## Identity: POSIX useradd/groupadd — resolved by PID 1, logind, PAM, glibc
-## Build:    Quadlet .build unit — Image=asterisk.build wires dependency
-## VIP:      ip(1) first global address on VRRP_IFACE (no secondary filter)
+## Image:    pbx-stack.build — debian:bookworm-slim + Sangoma asterisk22
+##           Golden image: asterisk + coturn + ffmpeg, two containers
+## VIP:      ip(1) first global address on VRRP_IFACE (keepalived)
+## MOH:      https://klaxon.dapla.net → HAProxy → icecast2:9000
+## Firewall: firewalld pbx zone — 5060/tcp+udp, 5061/tcp, 3478, 10000-10100
 ## Secrets:  mktemp /dev/shm only, never stdout or persistent paths
 set -euo pipefail
 
