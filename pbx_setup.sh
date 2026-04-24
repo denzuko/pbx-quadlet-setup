@@ -260,8 +260,13 @@ EOF
 
 cat > "$PBX_MOUNT/etc/asterisk/extensions.conf" << 'EOF'
 [from-internal]
+; 1000 — listen-only stream (MOH daplanet-stream)
 exten => 1000,1,Answer()
-same => n,Dial(PJSIP/1000,20,m(daplanet-stream))
+same => n,MusicOnHold(daplanet-stream)
+; 1010 — echo test
+exten => 1010,1,Answer()
+same => n,Echo()
+; 2600 — operator handset
 exten => 2600,1,Dial(PJSIP/2600,20)
 EOF
 
@@ -319,7 +324,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        liburiparser1 \
        coturn \
        ffmpeg \
-    && rm -rf /var/lib/apt/lists/* /tmp/aptly-pubkey.asc
+    && rm -rf /var/lib/apt/lists/* /tmp/aptly-pubkey.asc \
+    && mkdir -p /var/lib/asterisk/sounds/en \
+    && wget -qO /tmp/core-sounds.tar.gz \
+       https://downloads.asterisk.org/pub/telephony/sounds/releases/asterisk-core-sounds-en-ulaw-1.6.1.tar.gz \
+    && tar -xzf /tmp/core-sounds.tar.gz -C /var/lib/asterisk/sounds/en \
+    && rm -f /tmp/core-sounds.tar.gz
 EOF
 
 cat > "$USER_QUADLET_DIR/pbx-stack.build" << EOF
