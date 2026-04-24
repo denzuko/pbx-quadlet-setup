@@ -71,8 +71,8 @@
       <div class="card"><div class="card-title">Storage</div><div class="card-val">ZFS</div></div>
       <div class="card"><div class="card-title">Identity</div><div class="card-val">POSIX useradd</div></div>
       <div class="card"><div class="card-title">Containers</div><div class="card-val">Podman Quadlets</div></div>
-      <div class="card"><div class="card-title">PBX</div><div class="card-val">Asterisk 20</div></div>
-      <div class="card"><div class="card-title">TLS</div><div class="card-val">HAProxy + acme.sh</div></div>
+      <div class="card"><div class="card-title">PBX</div><div class="card-val">Asterisk 22 (Sangoma)</div></div>
+      <div class="card"><div class="card-title">TLS</div><div class="card-val">HAProxy wildcard</div></div>
       <div class="card"><div class="card-title">MOH</div><div class="card-val">Icecast2 / klaxon</div></div>
     </div>
   </section>
@@ -107,6 +107,49 @@ sudo bash pbx_setup.sh</pre>
       <tr><td class="rule">R15</td><td>PUBLIC_IP from keepalived VIP — never hardcoded</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R16</td><td>All ephemeral secrets via mktemp /dev/shm</td><td class="pass">PASS</td></tr>
     </table>
+  </section>
+
+  <section>
+    <h2>Changelog</h2>
+    <table>
+      <tr><th>Version</th><th>Change</th></tr>
+      <tr><td class="rule">v4.1.20</td><td>Playback prompts for all extensions; Asterisk core sounds in image</td></tr>
+      <tr><td class="rule">v4.1.19</td><td>SIP registration working — AOR names match endpoint names; firewalld pbx zone; Sangoma asterisk22</td></tr>
+      <tr><td class="rule">v4.1.18</td><td>Publish 5060/tcp for SIP TLS via HAProxy</td></tr>
+      <tr><td class="rule">v4.1.17</td><td>MOH stream via HAProxy HTTPS — klaxon.dapla.net validated</td></tr>
+      <tr><td class="rule">v4.1.16</td><td>Alpine → debian:bookworm-slim + Sangoma repo; asterisk.conf + modules.conf generated</td></tr>
+      <tr><td class="rule">v4.1.14</td><td>Golden image (pbx-stack.build); coturn STUN/TURN sidecar; host networking</td></tr>
+      <tr><td class="rule">v4.1.13</td><td>systemd-userdbd ordering fix; silent die bypass fix</td></tr>
+      <tr><td class="rule">v4.1.11</td><td>/etc/userdb/ JSON drop-in provisioning (later superseded)</td></tr>
+      <tr><td class="rule">v4.1.10</td><td>homectl NEWPASSWORD env var (later superseded)</td></tr>
+      <tr><td class="rule">v4.1</td><td>Initial release — ZFS + Quadlets + PJSIP + HAProxy + MOH</td></tr>
+    </table>
+  </section>
+
+  <section>
+    <h2>QA review prompt</h2>
+    <p style="color:var(--muted);font-size:0.85rem;margin-bottom:0.75rem;">Use this prompt when submitting the script to an LLM for peer review:</p>
+<pre><span class="comment">You are a senior infrastructure engineer reviewing a bash deployment script.
+Review pbx_setup.sh against these rules and flag any violations:
+
+R01: PJSIP endpoint names match Dial() targets in extensions.conf
+R02: Service account uses POSIX useradd/groupadd — not homectl or userdb
+R03: machinectl shell used for user unit activation — not su or runuser
+R04: Podman image built in user context — visible to pbxadmin only
+R05: All config files chmod 640 after heredoc generation
+R06: No TLS config inside container — HAProxy terminates externally
+R07: FFmpeg has -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5
+R08: RTP port range consistent between rtp.conf and Quadlet PublishPort
+R09: podman build includes explicit context path argument
+R10: Home directory set via useradd --home-dir, created with mkdir + chown
+R11: Credentials written only to mktemp /dev/shm path — never stdout
+R12: All config paths exist within Quadlet Volume= mount points
+R13: Image lifecycle via .build Quadlet unit — no bare podman build calls
+R14: MOH stream uses HTTPS URL via HAProxy — not host.containers.internal
+R15: PUBLIC_IP retrieved from keepalived VIP via ip(1) — never hardcoded
+R16: All ephemeral secrets use mktemp /dev/shm — never /tmp or /root
+
+Output: list each rule, PASS or FAIL, and a one-line reason.</span></pre>
   </section>
 
   <footer>
