@@ -69,7 +69,7 @@
     <h2>Stack</h2>
     <div class="grid">
       <div class="card"><div class="card-title">Storage</div><div class="card-val">ZFS</div></div>
-      <div class="card"><div class="card-title">Identity</div><div class="card-val">systemd-homed</div></div>
+      <div class="card"><div class="card-title">Identity</div><div class="card-val">POSIX useradd</div></div>
       <div class="card"><div class="card-title">Containers</div><div class="card-val">Podman Quadlets</div></div>
       <div class="card"><div class="card-title">PBX</div><div class="card-val">Asterisk 20</div></div>
       <div class="card"><div class="card-title">TLS</div><div class="card-val">HAProxy + acme.sh</div></div>
@@ -91,7 +91,7 @@ sudo bash pbx_setup.sh</pre>
     <table>
       <tr><th>Rule</th><th>Description</th><th>Status</th></tr>
       <tr><td class="rule">R01</td><td>PJSIP section naming + Dial() consistency</td><td class="pass">PASS</td></tr>
-      <tr><td class="rule">R02</td><td>homectl --storage=directory for service accounts</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R02</td><td>POSIX useradd/groupadd for service accounts</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R03</td><td>machinectl shell for user unit activation</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R04</td><td>Podman image store visibility</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R05</td><td>Config chmod 640 after heredoc</td><td class="pass">PASS</td></tr>
@@ -99,7 +99,7 @@ sudo bash pbx_setup.sh</pre>
       <tr><td class="rule">R07</td><td>FFmpeg reconnect flags for MOH stream</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R08</td><td>RTP port range consistency rtp.conf ↔ Quadlet</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R09</td><td>podman build explicit context path</td><td class="pass">PASS</td></tr>
-      <tr><td class="rule">R10</td><td>homectl home path resolved dynamically</td><td class="pass">PASS</td></tr>
+      <tr><td class="rule">R10</td><td>Home path set explicitly via useradd --home-dir</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R11</td><td>Credentials to /dev/shm via mktemp</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R12</td><td>Config paths audited against Quadlet Volume mounts</td><td class="pass">PASS</td></tr>
       <tr><td class="rule">R13</td><td>Quadlet .build units for image lifecycle</td><td class="pass">PASS</td></tr>
