@@ -154,7 +154,7 @@ log "Generating Asterisk configs for VIP: $PUBLIC_IP"
 cat > "$PBX_MOUNT/etc/asterisk/asterisk.conf" << 'EOF'
 [directories]
 astetcdir => /etc/asterisk
-astmoddir => /usr/lib/asterisk/modules
+astmoddir => /usr/lib/x86_64-linux-gnu/asterisk/modules
 astvarlibdir => /var/lib/asterisk
 astdbdir => /var/lib/asterisk
 astkeydir => /var/lib/asterisk
@@ -313,6 +313,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && apt-get update && apt-get install -y --no-install-recommends \
        asterisk22 \
        asterisk22-core \
+       libxslt1.1 \
+       liburiparser1 \
        coturn \
        ffmpeg \
     && rm -rf /var/lib/apt/lists/* /tmp/aptly-pubkey.asc
