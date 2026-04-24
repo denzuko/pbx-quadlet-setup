@@ -262,12 +262,22 @@ cat > "$PBX_MOUNT/etc/asterisk/extensions.conf" << 'EOF'
 [from-internal]
 ; 1000 — listen-only stream (MOH daplanet-stream)
 exten => 1000,1,Answer()
+same => n,Playback(silence/1)
 same => n,MusicOnHold(daplanet-stream)
 ; 1010 — echo test
 exten => 1010,1,Answer()
+same => n,Playback(demo-echotest)
 same => n,Echo()
+same => n,Playback(demo-thanks)
+same => n,Hangup()
 ; 2600 — operator handset
 exten => 2600,1,Dial(PJSIP/2600,20)
+same => n,Playback(pbx-invalid)
+same => n,Hangup()
+; invalid extension handler
+exten => i,1,Playback(pbx-invalid)
+same => n,Hangup()
+exten => t,1,Hangup()
 EOF
 
 chmod 640 "$PBX_MOUNT"/etc/asterisk/*.conf
