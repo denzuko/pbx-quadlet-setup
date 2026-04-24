@@ -81,6 +81,38 @@ fi
 # ZFS pool check
 zfs list "${PBX_DATASET%%/*}" >/dev/null 2>&1 || die "ZFS pool '${PBX_DATASET%%/*}' not found"
 
+# firewalld — create pbx zone and open required ports in the interface zone
+# wlan0 is bound to the work zone on this host; rich rules open SIP/STUN/RTP
+if command -v firewall-cmd >/dev/null 2>&1; then
+    log "Configuring firewalld pbx zone and work zone rules..."
+
+    # Create pbx zone if it doesn't exist
+    firewall-cmd --permanent --get-zones | grep -qw pbx         || firewall-cmd --permanent --new-zone=pbx
+
+    # Open all required ports in pbx zone
+    for rule in         "5060/tcp" "5060/udp"         "5061/tcp"         "3478/tcp" "3478/udp"         "5349/tcp"         "10000-10100/udp"
+    do
+        firewall-cmd --permanent --zone=pbx --add-port="$rule" 2>/dev/null || true
+    done
+
+    # Add rich rules to work zone (wlan0) to accept SIP/STUN/RTP traffic
+    for port_proto in         "5060:tcp" "5060:udp"         "5061:tcp"         "3478:tcp" "3478:udp"         "5349:tcp"
+    do
+        port="${port_proto%%:*}"
+        proto="${port_proto##*:}"
+        firewall-cmd --permanent --zone=work             --add-rich-rule="rule family=ipv4 port port=${port} protocol=${proto} accept"             2>/dev/null || true
+    done
+
+    # RTP range as rich rule
+    firewall-cmd --permanent --zone=work         --add-rich-rule="rule family=ipv4 port port=${RTP_START}-${RTP_END} protocol=udp accept"         2>/dev/null || true
+
+    firewall-cmd --reload
+    log "firewalld configured — pbx zone created, work zone rules applied"
+else
+    log "WARNING: firewall-cmd not found — configure firewall manually"
+    log "  Required ports: 5060/tcp+udp, 5061/tcp, 3478/tcp+udp, 5349/tcp, ${RTP_START}-${RTP_END}/udp"
+fi
+
 ## SECTION 3: ZFS / FILESYSTEM SETUP
 if ! zfs list "$PBX_DATASET" >/dev/null 2>&1; then
     log "Creating ZFS dataset $PBX_DATASET"

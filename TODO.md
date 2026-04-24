@@ -23,10 +23,10 @@
 
 ## Firewalld automation
 
-- [ ] Add Section 2 preflight step to create `pbx` firewalld zone
-- [ ] Auto-open ports: 5060/tcp+udp, 5061/tcp, 3478/tcp+udp, 5349/tcp, 10000-10100/udp
-- [ ] Link `work` zone to `pbx` zone via rich rules
-- [ ] Add `firewall-cmd` to dependency check in preflight
+- [x] Add Section 2 preflight step to create `pbx` firewalld zone
+- [x] Auto-open ports: 5060/tcp+udp, 5061/tcp, 3478/tcp+udp, 5349/tcp, 10000-10100/udp
+- [x] Link `work` zone to `pbx` zone via rich rules
+- [x] Add `firewall-cmd` to dependency check in preflight
 
 ## GPG code signing
 
@@ -48,3 +48,21 @@
 - [ ] ZFS encryption for `storage/containers/pbx` dataset
 - [ ] Automatic credential rotation on reinstall (detect existing `/dev/shm/pbx-creds-*`)
 - [ ] Add `TURN_SECRET` to sorcery.conf for res_stun_monitor authentication
+
+## Prometheus monitoring + Grafana dashboard
+
+- [ ] Add `asterisk-prometheus` container to pbx-stack (same golden image)
+- [ ] Enable `res_prometheus` module in modules.conf
+- [ ] Generate `prometheus.conf` in Section 5 with HTTP endpoint on localhost:8088
+- [ ] Add HAProxy backend `prometheus` → `127.0.0.1:8088` with auth
+- [ ] Add coturn Prometheus metrics endpoint (coturn supports `--prometheus-port`)
+- [ ] Add pbx-stack scrape job to host Prometheus config (`/etc/prometheus/prometheus.yml`)
+- [ ] Build Grafana dashboard covering:
+  - Active channels / calls processed
+  - SIP registration state per endpoint
+  - RTP packet loss / jitter
+  - MOH stream uptime (ffmpeg process alive)
+  - coturn allocations / relay bandwidth
+  - Asterisk module load / uptime
+- [ ] Add `alerting/pbx.rules.yml` — alert on zero active transports, MOH stream down, coturn unhealthy
+- [ ] Export dashboard JSON to `grafana/pbx-dashboard.json` in repo
