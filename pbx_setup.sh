@@ -503,8 +503,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
        liburiparser1 \
        coturn \
        ffmpeg \
-    && rm -rf /var/lib/apt/lists/* /tmp/aptly-pubkey.asc \
-    && mkdir -p /var/lib/asterisk/sounds/en \
+    && rm -rf /var/lib/apt/lists/* /tmp/aptly-pubkey.asc
+RUN mkdir -p /var/lib/asterisk/sounds/en \
     && wget -qO /tmp/core-sounds.tar.gz \
        https://downloads.asterisk.org/pub/telephony/sounds/releases/asterisk-core-sounds-en-ulaw-1.6.1.tar.gz \
     && tar -xzf /tmp/core-sounds.tar.gz -C /var/lib/asterisk/sounds/en \
