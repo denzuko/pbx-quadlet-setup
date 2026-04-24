@@ -21,12 +21,17 @@
 - [ ] Route dedicated DID block to BBS context
 - [ ] Evaluate `app_modem` vs external ATA bridge for data calls
 
-## Firewalld automation
+## Firewall automation
 
 - [x] Add Section 2 preflight step to create `pbx` firewalld zone
 - [x] Auto-open ports: 5060/tcp+udp, 5061/tcp, 3478/tcp+udp, 5349/tcp, 10000-10100/udp
 - [x] Link `work` zone to `pbx` zone via rich rules
 - [x] Add `firewall-cmd` to dependency check in preflight
+- [x] DRY firewall code into `_fw_open` / `_fw_open_range` / `_fw_apply` helpers
+- [x] Add ufw support (`ufw allow port/proto`)
+- [x] Add pf support (anchor `pbx-quadlet` in `/etc/pf.anchors/`)
+- [ ] Test ufw path on Ubuntu minimal install
+- [ ] Test pf path on FreeBSD / OpenBSD
 
 ## GPG code signing
 

@@ -81,37 +81,73 @@ fi
 # ZFS pool check
 zfs list "${PBX_DATASET%%/*}" >/dev/null 2>&1 || die "ZFS pool '${PBX_DATASET%%/*}' not found"
 
-# firewalld — create pbx zone and open required ports in the interface zone
-# wlan0 is bound to the work zone on this host; rich rules open SIP/STUN/RTP
-if command -v firewall-cmd >/dev/null 2>&1; then
-    log "Configuring firewalld pbx zone and work zone rules..."
+# Firewall automation — supports firewalld, ufw, and pf
+# Ports required: 5060/tcp+udp (SIP), 5061/tcp (SIPS), 3478/tcp+udp (STUN/TURN),
+#                 5349/tcp (TURNS), RTP_START-RTP_END/udp (media)
 
-    # Create pbx zone if it doesn't exist
-    firewall-cmd --permanent --get-zones | grep -qw pbx         || firewall-cmd --permanent --new-zone=pbx
-
-    # Open all required ports in pbx zone
-    for rule in         "5060/tcp" "5060/udp"         "5061/tcp"         "3478/tcp" "3478/udp"         "5349/tcp"         "10000-10100/udp"
-    do
-        firewall-cmd --permanent --zone=pbx --add-port="$rule" 2>/dev/null || true
-    done
-
-    # Add rich rules to work zone (wlan0) to accept SIP/STUN/RTP traffic
-    for port_proto in         "5060:tcp" "5060:udp"         "5061:tcp"         "3478:tcp" "3478:udp"         "5349:tcp"
-    do
-        port="${port_proto%%:*}"
-        proto="${port_proto##*:}"
+## DRY helper — open one port/protocol pair in whatever firewall is active
+_fw_open() {
+    local port="$1" proto="$2"
+    if command -v firewall-cmd >/dev/null 2>&1; then
+        firewall-cmd --permanent --zone=pbx --add-port="${port}/${proto}" 2>/dev/null || true
         firewall-cmd --permanent --zone=work             --add-rich-rule="rule family=ipv4 port port=${port} protocol=${proto} accept"             2>/dev/null || true
-    done
+    elif command -v ufw >/dev/null 2>&1; then
+        ufw allow "${port}/${proto}" 2>/dev/null || true
+    elif command -v pfctl >/dev/null 2>&1; then
+        # pf — append pass rule; anchor pbx-quadlet must exist in pf.conf
+        echo "pass in quick proto ${proto} to any port ${port}"             >> /etc/pf.anchors/pbx-quadlet 2>/dev/null || true
+    fi
+}
 
-    # RTP range as rich rule
-    firewall-cmd --permanent --zone=work         --add-rich-rule="rule family=ipv4 port port=${RTP_START}-${RTP_END} protocol=udp accept"         2>/dev/null || true
+_fw_open_range() {
+    local start="$1" end="$2" proto="$3"
+    if command -v firewall-cmd >/dev/null 2>&1; then
+        firewall-cmd --permanent --zone=pbx             --add-port="${start}-${end}/${proto}" 2>/dev/null || true
+        firewall-cmd --permanent --zone=work             --add-rich-rule="rule family=ipv4 port port=${start}-${end} protocol=${proto} accept"             2>/dev/null || true
+    elif command -v ufw >/dev/null 2>&1; then
+        ufw allow proto "${proto}" to any port "${start}:${end}" 2>/dev/null || true
+    elif command -v pfctl >/dev/null 2>&1; then
+        echo "pass in quick proto ${proto} to any port ${start}:${end}"             >> /etc/pf.anchors/pbx-quadlet 2>/dev/null || true
+    fi
+}
 
-    firewall-cmd --reload
-    log "firewalld configured — pbx zone created, work zone rules applied"
-else
-    log "WARNING: firewall-cmd not found — configure firewall manually"
-    log "  Required ports: 5060/tcp+udp, 5061/tcp, 3478/tcp+udp, 5349/tcp, ${RTP_START}-${RTP_END}/udp"
-fi
+_fw_apply() {
+    if command -v firewall-cmd >/dev/null 2>&1; then
+        log "Configuring firewalld — pbx zone + work zone rich rules"
+        firewall-cmd --permanent --get-zones | grep -qw pbx             || firewall-cmd --permanent --new-zone=pbx
+    elif command -v ufw >/dev/null 2>&1; then
+        log "Configuring ufw rules"
+    elif command -v pfctl >/dev/null 2>&1; then
+        log "Configuring pf anchor pbx-quadlet"
+        mkdir -p /etc/pf.anchors
+        : > /etc/pf.anchors/pbx-quadlet
+    else
+        log "WARNING: no supported firewall found — open ports manually"
+        log "  Required: 5060/tcp+udp, 5061/tcp, 3478/tcp+udp, 5349/tcp, ${RTP_START}-${RTP_END}/udp"
+        return
+    fi
+
+    _fw_open 5060 tcp
+    _fw_open 5060 udp
+    _fw_open 5061 tcp
+    _fw_open 3478 tcp
+    _fw_open 3478 udp
+    _fw_open 5349 tcp
+    _fw_open_range "$RTP_START" "$RTP_END" udp
+
+    if command -v firewall-cmd >/dev/null 2>&1; then
+        firewall-cmd --reload
+        log "firewalld reloaded"
+    elif command -v ufw >/dev/null 2>&1; then
+        ufw reload 2>/dev/null || true
+        log "ufw reloaded"
+    elif command -v pfctl >/dev/null 2>&1; then
+        pfctl -f /etc/pf.conf 2>/dev/null || true
+        log "pf reloaded"
+    fi
+}
+
+_fw_apply
 
 ## SECTION 3: ZFS / FILESYSTEM SETUP
 if ! zfs list "$PBX_DATASET" >/dev/null 2>&1; then
