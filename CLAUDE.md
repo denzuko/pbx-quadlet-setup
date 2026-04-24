@@ -32,10 +32,20 @@ It is maintained by Den Zuko (Dwight Spencer) and reviewed with Claude (Anthropi
 
 ## Extensions
 
+4-digit NANP format. PhreakNet prefix replaces 555 in v5.0.
+
 | Ext  | Function |
 |------|----------|
+| 0    | Operator intercept → 2600 |
+| 0100 | Milliwatt tone (1004 Hz, 30s) |
+| 0101 | Echo test |
+| 0102 | Speaking clock (America/New_York) |
+| 0103 | Intercept / SIT tone + ss-noservice |
+| 0200 | Open conference bridge (ConfBridge pbx-open) |
+| 0201 | Private conference (ConfBridge pbx-private, random PIN) |
+| 0300 | MOTD / info line |
+| 0301 | Da Planet Security info |
 | 1000 | MusicOnHold(daplanet-stream) — live radio via klaxon |
-| 1010 | Echo() — latency test |
 | 2600 | Dial(PJSIP/2600) — operator handset |
 
 ## QA standard

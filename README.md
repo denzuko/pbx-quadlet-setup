@@ -38,9 +38,19 @@ sudo bash pbx_setup.sh
 
 | Ext  | Function |
 |------|----------|
-| 1000 | Live radio stream (MOH → klaxon/icecast2) |
-| 1010 | Echo test |
+| 0    | Operator intercept → 2600 |
+| 0100 | Milliwatt tone (1004 Hz) |
+| 0101 | Echo test |
+| 0102 | Speaking clock (Eastern) |
+| 0103 | Intercept / SIT tone |
+| 0200 | Open conference bridge |
+| 0201 | Private conference (PIN) |
+| 0300 | MOTD / info line |
+| 0301 | Da Planet Security info |
+| 1000 | Radio stream — klaxon/icecast2 |
 | 2600 | Operator handset |
+
+NANP format: `PREFIX-XXXX` — PhreakNet prefix replaces 555 in v5.0
 
 ## Development
 

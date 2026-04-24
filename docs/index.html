@@ -61,7 +61,7 @@
     <div class="badges">
       <span class="badge green">27/27 tests passing</span>
       <span class="badge green">ShellCheck clean</span>
-      <span class="badge amber">v4.1.20</span>
+      <span class="badge amber">v4.1.25</span>
     </div>
   </header>
 
@@ -78,9 +78,33 @@
   </section>
 
   <section>
+    <h2>Extensions</h2>
+    <table>
+      <tr><th>Ext</th><th>Function</th></tr>
+      <tr><td class="rule">0</td><td>Operator intercept → 2600</td></tr>
+      <tr><td class="rule">0100</td><td>Milliwatt tone (1004 Hz)</td></tr>
+      <tr><td class="rule">0101</td><td>Echo test</td></tr>
+      <tr><td class="rule">0102</td><td>Speaking clock (Eastern)</td></tr>
+      <tr><td class="rule">0103</td><td>Intercept / SIT tone</td></tr>
+      <tr><td class="rule">0200</td><td>Open conference bridge</td></tr>
+      <tr><td class="rule">0201</td><td>Private conference (PIN)</td></tr>
+      <tr><td class="rule">0300</td><td>MOTD / info line</td></tr>
+      <tr><td class="rule">0301</td><td>Da Planet Security info</td></tr>
+      <tr><td class="rule">1000</td><td>Radio stream — klaxon/icecast2</td></tr>
+      <tr><td class="rule">2600</td><td>Operator handset</td></tr>
+    </table>
+    <p style="font-size:0.8rem;color:var(--muted);margin-top:0.5rem;">NANP format: PREFIX-XXXX — PhreakNet prefix replaces 555 in v5.0</p>
+  </section>
+
+  <section>
     <h2>Changelog</h2>
     <table>
       <tr><th>Version</th><th>Summary</th></tr>
+      <tr><td class="rule">v4.1.25</td><td>Core sounds in image; speaking clock confirmed; sounds in separate RUN layer</td></tr>
+      <tr><td class="rule">v4.1.24</td><td>musiconhold.conf [general] section fix; SayUnixTime format</td></tr>
+      <tr><td class="rule">v4.1.23</td><td>4-digit NANP dialplan; confbridge; from-phreaknet stub</td></tr>
+      <tr><td class="rule">v4.1.22</td><td>DRY firewall helpers; ufw and pf support</td></tr>
+      <tr><td class="rule">v4.1.21</td><td>firewalld automation in preflight</td></tr>
       <tr><td class="rule">v4.1.20</td><td>Playback prompts; core sounds; echo test (1010)</td></tr>
       <tr><td class="rule">v4.1.19</td><td>SIP registration — AOR naming fix; Sangoma asterisk22; firewalld</td></tr>
       <tr><td class="rule">v4.1.17</td><td>MOH via HAProxy HTTPS → klaxon.dapla.net validated</td></tr>
@@ -152,7 +176,7 @@ Output: list each rule, PASS or FAIL, and a one-line reason.</span></pre>
   <footer>
     <a href="pbx_setup.sh">pbx_setup.sh</a> ·
     <a href="https://github.com/denzuko/pbx-quadlet-setup">GitHub</a> ·
-    <a href="https://github.com/denzuko/pbx-quadlet-setup/releases/tag/v4.1.20">Release v4.1.20</a>
+    <a href="https://github.com/denzuko/pbx-quadlet-setup/releases/tag/v4.1.25">Release v4.1.25</a>
   </footer>
 </div>
 </body>

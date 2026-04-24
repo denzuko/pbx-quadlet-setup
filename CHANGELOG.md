@@ -2,6 +2,31 @@
 
 All notable changes to pbx-quadlet-setup are documented here.
 
+## [v4.1.25] - 2026-04-24
+- Containerfile: split core sounds download into separate RUN layer (STEP 4)
+- SayUnixTime format confirmed working — "at H o'clock PM" on hour is correct Bell System behavior
+- Core sounds (ulaw 1.6.1) confirmed in image
+
+## [v4.1.24] - 2026-04-24
+- Fix musiconhold.conf missing [general] section — res_musiconhold silently fails without it
+- Fix SayUnixTime format string to 'digits/at' IMp
+
+## [v4.1.23] - 2026-04-24
+- Implement 4-digit NANP dialplan (0/0100-0301/1000/2600)
+- Add confbridge.conf with pbx-open and pbx-private bridges
+- Add from-phreaknet context stub for v5.0 IAX2 prefix routing
+- Add random CONF_PIN to credential output
+
+## [v4.1.22] - 2026-04-24
+- DRY firewall code into _fw_open/_fw_open_range/_fw_apply helpers
+- Add ufw support
+- Add pf anchor support (pbx-quadlet)
+
+## [v4.1.21] - 2026-04-24
+- firewalld automation in Section 2 preflight
+- Create pbx zone, open all SIP/STUN/TURN/RTP ports
+- Rich rules on work zone for wlan0
+
 ## [v4.1.20] - 2026-04-24
 - Add Playback prompts for all extensions (demo-echotest, pbx-invalid, silence/1)
 - Add Asterisk core sounds (ulaw) download to Containerfile
